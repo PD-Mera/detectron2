@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 import torch
 from fvcore.common.checkpoint import Checkpointer
 from torch.nn.parallel import DistributedDataParallel
+from typing import Any, cast, Dict, IO, Iterable, List, NamedTuple, Optional, Tuple
 
 import detectron2.utils.comm as comm
 from detectron2.utils.file_io import PathManager
@@ -59,6 +60,8 @@ class DetectionCheckpointer(Checkpointer):
             self._parsed_url_during_load = parsed_url
             path = parsed_url._replace(query="").geturl()  # remove query from filename
             path = self.path_manager.get_local_path(path)
+        
+        
         ret = super().load(path, *args, **kwargs)
 
         if need_sync:
@@ -113,7 +116,7 @@ class DetectionCheckpointer(Checkpointer):
     def _torch_load(self, f):
         return super()._load_file(f)
 
-    def _load_model(self, checkpoint):
+    def _load_model(self, checkpoint, use_timm_weights = False):
         if checkpoint.get("matching_heuristics", False):
             self._convert_ndarray_to_tensor(checkpoint["model"])
             # convert weights by name-matching heuristics
@@ -123,7 +126,7 @@ class DetectionCheckpointer(Checkpointer):
                 c2_conversion=checkpoint.get("__author__", None) == "Caffe2",
             )
         # for non-caffe2 models, use standard ways to load it
-        incompatible = super()._load_model(checkpoint)
+        incompatible = super()._load_model(checkpoint, use_timm_weights)
 
         model_buffers = dict(self.model.named_buffers(recurse=False))
         for k in ["pixel_mean", "pixel_std"]:
@@ -141,3 +144,47 @@ class DetectionCheckpointer(Checkpointer):
             if "anchor_generator.cell_anchors" in k:
                 incompatible.unexpected_keys.remove(k)
         return incompatible
+
+    
+            
+
+    def timm_load(self, path: str, checkpointables: Optional[List[str]] = None, use_timm_weights = False
+    ) -> Dict[str, Any]:
+        """
+        Load from the given checkpoint.
+
+        Args:
+            path (str): path or url to the checkpoint. If empty, will not load
+                anything.
+            checkpointables (list): List of checkpointable names to load. If not
+                specified (None), will load all the possible checkpointables.
+        Returns:
+            dict:
+                extra data loaded from the checkpoint that has not been
+                processed. For example, those saved with
+                :meth:`.save(**extra_data)`.
+        """
+        if not path:
+            # no checkpoint provided
+            self.logger.info("No checkpoint found. Initializing model from scratch")
+            return {}
+        self.logger.info("[Checkpointer] Loading from {} ...".format(path))
+        if not os.path.isfile(path):
+            path = self.path_manager.get_local_path(path)
+            assert os.path.isfile(path), "Checkpoint {} not found!".format(path)
+
+        checkpoint = self._load_file(path)
+        incompatible = self._load_model(checkpoint, use_timm_weights=use_timm_weights)
+        if (
+            incompatible is not None
+        ):  # handle some existing subclasses that returns None
+            self._log_incompatible_keys(incompatible)
+
+        for key in self.checkpointables if checkpointables is None else checkpointables:
+            if key in checkpoint:
+                self.logger.info("Loading {} from {} ...".format(key, path))
+                obj = self.checkpointables[key]
+                obj.load_state_dict(checkpoint.pop(key))
+
+        # return any further checkpoint data
+        return checkpoint

@@ -15,6 +15,7 @@ from .resnet import (
 from .vit import ViT, SimpleFeaturePyramid, get_vit_lr_decay_rate
 from .mvit import MViT
 from .swin import SwinTransformer
+from .vit_timm import VisionTransformer_ViTDet, SimpleFeaturePyramid_ViTDet
 
 __all__ = [k for k in globals().keys() if not k.startswith("_")]
 # TODO can expose more resnet blocks after careful consideration

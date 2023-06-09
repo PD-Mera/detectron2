@@ -183,7 +183,7 @@ setup(
         # Lock version of fvcore/iopath because they may have breaking changes
         # NOTE: when updating fvcore/iopath version, make sure fvcore depends
         # on compatible version of iopath.
-        "fvcore>=0.1.5,<0.1.6",  # required like this to make it pip installable
+        # "fvcore>=0.1.5,<0.1.6",  # required like this to make it pip installable
         "iopath>=0.1.7,<0.1.10",
         "dataclasses; python_version<'3.7'",
         "omegaconf>=2.1",
