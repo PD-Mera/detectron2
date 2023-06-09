@@ -1,3 +1,9 @@
+# Detectron2 - Modified
+
+- Modify some code to use pretrained weights from `timm` (especially `dinov2` weights)
+
+# (OLD README)
+
 <img src=".github/Detectron2-Logo-Horz.svg" width="300" >
 
 <a href="https://opensource.facebook.com/support-ukraine">
