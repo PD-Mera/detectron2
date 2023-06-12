@@ -61,6 +61,7 @@ model.backbone = L(SimpleFeaturePyramid_ViTDet)(
 )
 
 model.roi_heads.box_head.conv_norm = model.roi_heads.mask_head.conv_norm = "LN"
+model.roi_heads.num_classes = 1
 
 # 2conv in RPN:
 model.proposal_generator.head.conv_dims = [-1, -1]
